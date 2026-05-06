@@ -5,8 +5,8 @@ import zipfile
 import re
 from datetime import datetime, date
 
-st.set_page_config(page_title="Transaction CSV Converter", layout="centered")
-st.title("Transaction CSV Converter")
+st.set_page_config(page_title="Bank Feed Uploads", layout="centered")
+st.title("Bank Feed Uploads")
 
 # ── Platform config ──────────────────────────────────────────────────────────
 
