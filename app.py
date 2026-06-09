@@ -36,13 +36,6 @@ st.set_page_config(page_title="Bank Feed Uploads", layout="centered")
 st.title("Bank Feed Uploads")
 
 PLATFORM_CONFIG = {
-    "EvoPay": {
-        "date_col": "Date",
-        "desc_cols": ["Customer", "ID"],
-        "amount_col": "Total",
-        "negate_amount": True,
-        "evopay": True,
-    },    
     "Divvy CR": {
         "date_col": "Cleared Time in Statement (MT)",
         "desc_cols": ["Clean Merchant Name", "Card Name", "Card Last 4"],
@@ -53,6 +46,13 @@ PLATFORM_CONFIG = {
         "desc_cols": ["Clean Merchant Name", "Card Name", "Card Last 4"],
         "amount_col": "Amount",
     },
+    "EvoPay": {
+        "date_col": "Date",
+        "desc_cols": ["Customer", "ID"],
+        "amount_col": "Total",
+        "negate_amount": True,
+        "evopay": True,
+    },   
     "Global Rewards": {
         "date_col": "Posted Date",
         "desc_cols": ["Description", "Cardholder Name", "Last 4 Digits"],
