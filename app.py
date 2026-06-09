@@ -82,6 +82,13 @@ PLATFORM_CONFIG = {
         "wex_last4": True,
         "exclude_wex_na": True,
     },
+    "EvoPay": {
+        "date_col": "Date",
+        "desc_cols": ["Customer", "ID"],
+        "amount_col": "Total",
+        "negate_amount": True,
+        "evopay": True,
+    },
 }
 
 def ordinal(n):
@@ -125,6 +132,17 @@ def parse_amount(val: str, negate: bool) -> str:
         return str(-parsed)
     return cleaned
 
+def parse_evopay_date(val: str):
+    import re as _re
+    s = str(val).strip()
+    m = _re.match(r"^(\d{2}-\d{2}-\d{4})\s+(\d{1,2}:\d{2})\s*(am|pm)$", s, _re.IGNORECASE)
+    if m:
+        try:
+            return datetime.strptime(m.group(1) + " " + m.group(2) + " " + m.group(3).upper(), "%m-%d-%Y %I:%M %p")
+        except ValueError:
+            pass
+    return None
+
 def parse_date_flexible(val: str):
     for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m/%d/%y",
                 "%m/%d/%Y %H:%M", "%m/%d/%Y %H:%M:%S",
@@ -154,6 +172,14 @@ def process(df: pd.DataFrame, config: dict, start: date, end: date) -> pd.DataFr
                 continue
         if config.get("exclude_wex_na"):
             if row.get(config["desc_cols"][1], "").strip() == "N/A":
+                continue
+
+        # EvoPay: keep only Accepted or Completed for both Buyer and Seller State
+        if config.get("evopay"):
+            buyer = row.get("Buyer State", "").strip()
+            seller = row.get("Seller State", "").strip()
+            valid = {"Accepted", "Completed"}
+            if buyer not in valid or seller not in valid:
                 continue
 
         # Auto-detect alternate Wex column names
@@ -186,6 +212,8 @@ def process(df: pd.DataFrame, config: dict, start: date, end: date) -> pd.DataFr
 
         if config.get("slash_date"):
             tx_date = parse_slash_date(raw_date)
+        elif config.get("evopay"):
+            tx_date = parse_evopay_date(raw_date)
         else:
             tx_date = parse_date_flexible(raw_date)
 
@@ -197,13 +225,17 @@ def process(df: pd.DataFrame, config: dict, start: date, end: date) -> pd.DataFr
         formatted_date = tx_date.strftime("%-m/%-d/%Y")
 
         merchant = row.get(config["desc_cols"][0], "").strip()
-        card_name = row.get(config["desc_cols"][1], "").strip()
-        card_last_raw = str(row.get(config["desc_cols"][2], "")).strip()
-        if config.get("wex_last4"):
-            card_last = card_last_raw[-4:]
+        if config.get("evopay"):
+            tx_id = row.get(config["desc_cols"][1], "").strip()
+            description = " - ".join(filter(bool, [merchant, tx_id]))
         else:
-            card_last = card_last_raw.lstrip("'").rstrip(".0") if card_last_raw.endswith(".0") else card_last_raw.lstrip("'")
-        description = " - ".join(filter(bool, [merchant, card_name, card_last]))
+            card_name = row.get(config["desc_cols"][1], "").strip()
+            card_last_raw = str(row.get(config["desc_cols"][2], "")).strip()
+            if config.get("wex_last4"):
+                card_last = card_last_raw[-4:]
+            else:
+                card_last = card_last_raw.lstrip("'").rstrip(".0") if card_last_raw.endswith(".0") else card_last_raw.lstrip("'")
+            description = " - ".join(filter(bool, [merchant, card_name, card_last]))
 
         amount = parse_amount(row.get(config["amount_col"], ""), config.get("negate_amount", False))
         output.append({"Date": formatted_date, "Description": description, "Amount": amount})
