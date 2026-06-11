@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Feed Uploads</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f5f4f0;
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+    color: #1a1a18;
+  }
+
+  .container { max-width: 620px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: #888780;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e8e6e0;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-full { margin-bottom: 16px; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #888780;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+
+  input[type="text"], input[type="date"], select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e8e6e0;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: #1a1a18;
+    background: #fafaf8;
+    outline: none;
+    appearance: auto;
+  }
+  input[type="text"]:focus, input[type="date"]:focus, select:focus { border-color: #1a1a18; }
+
+  .drop-zone {
+    border: 1.5px dashed #d0cec8;
+    border-radius: 10px;
+    background: #fafaf8;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    margin-bottom: 6px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: #1a1a18; background: #f0efe9; }
+  .drop-zone.has-file { border-color: #3b6d11; background: #f2f8ea; }
+  .drop-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 22px; margin-bottom: 6px; color: #aaa; }
+  .drop-zone.has-file .drop-icon { color: #3b6d11; }
+  .drop-text { font-size: 14px; color: #555; margin-bottom: 3px; }
+  .drop-zone.has-file .drop-text { color: #3b6d11; font-weight: 500; }
+  .drop-sub { font-size: 11px; color: #aaa; font-family: 'DM Mono', monospace; }
+
+  .actions { display: flex; gap: 12px; margin-top: 20px; align-items: center; }
+
+  button {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button:active { transform: scale(0.98); }
+
+  #process-btn {
+    background: #1a1a18;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #process-btn:hover:not(:disabled) { background: #333; }
+  #process-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  #clear-btn {
+    background: #e0e0e0;
+    color: #222;
+    border: 1px solid #bbb;
+  }
+  #clear-btn:hover { background: #c8c8c8; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status {
+    display: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-top: 16px;
+  }
+  .status.ok  { background: #eaf3de; color: #3b6d11; border: 1px solid #c0dd97; }
+  .status.err { background: #fcebeb; color: #a32d2d; border: 1px solid #f7c1c1; }
+
+  #results { display: none; }
+
+  .preview-wrap { overflow-x: auto; border: 1px solid #e8e6e0; border-radius: 8px; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: #f5f4f0; }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 10px; font-weight: 500; color: #888780;
+    letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  }
+  td { padding: 9px 14px; border-top: 1px solid #e8e6e0; white-space: nowrap; }
+
+  .btn-download {
+    display: inline-block;
+    background: #1a1a18;
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn-download:hover { background: #333; }
+
+  @media (max-width: 500px) {
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="eyebrow">Bank Feed Converter</div>
+  <h1>Bank Feed Uploads</h1>
+
+  <div class="card">
+    <div class="form-row">
+      <div>
+        <label for="broker">Broker</label>
+        <input type="text" id="broker" placeholder="" oninput="checkReady()" />
+      </div>
+      <div>
+        <label for="platform">Platform</label>
+        <select id="platform" onchange="checkReady()">
+          <option value="">Select...</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-full">
+      <label for="account-name">Account Name <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+      <input type="text" id="account-name" placeholder="e.g. WH" />
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label for="date-start">Start date</label>
+        <input type="date" id="date-start" onchange="checkReady()" />
+      </div>
+      <div>
+        <label for="date-end">End date</label>
+        <input type="date" id="date-end" onchange="checkReady()" />
+      </div>
+    </div>
+
+    <label>Source file</label>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".csv,.xlsx" />
+      <div class="drop-icon" id="drop-icon">↑</div>
+      <div class="drop-text" id="drop-text"><strong>Click to upload</strong> or drag &amp; drop</div>
+      <div class="drop-sub" id="drop-sub">CSV or XLSX</div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="actions">
+      <button id="process-btn" disabled>
+        <span id="btn-label">Convert</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+      <button id="clear-btn">Clear / Reset</button>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="card">
+      <p id="row-count" style="font-size:14px;color:#3b6d11;margin-bottom:16px;font-weight:500;"></p>
+      <div class="preview-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Description</th><th>Amount</th></tr>
+          </thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+      <a id="download-btn" class="btn-download" href="#" style="display:none;">Download CSV</a>
+    </div>
+  </div>
+
+</div>
+<script>
+  let selectedFile = null;
+
+  // Load platforms from server
+  fetch('/platforms').then(r => r.json()).then(platforms => {
+    const sel = document.getElementById('platform');
+    platforms.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = p;
+      sel.appendChild(opt);
+    });
+  });
+
+  function checkReady() {
+    const broker   = document.getElementById('broker').value.trim();
+    const platform = document.getElementById('platform').value;
+    const ds       = document.getElementById('date-start').value;
+    const de       = document.getElementById('date-end').value;
+    document.getElementById('process-btn').disabled = !(broker && platform && ds && de && selectedFile);
+  }
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+    el.style.display = 'block';
+  }
+
+  // File handling
+  const dropZone  = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  function setFile(f) {
+    selectedFile = f;
+    dropZone.classList.add('has-file');
+    document.getElementById('drop-icon').textContent = '✓';
+    document.getElementById('drop-text').innerHTML = `<strong>${f.name}</strong>`;
+    document.getElementById('drop-sub').textContent = (f.size / 1024).toFixed(1) + ' KB';
+    checkReady();
+  }
+
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+
+  function reset() {
+    selectedFile = null;
+    document.getElementById('broker').value = '';
+    document.getElementById('platform').value = '';
+    document.getElementById('account-name').value = '';
+    document.getElementById('date-start').value = '';
+    document.getElementById('date-end').value = '';
+    dropZone.classList.remove('has-file');
+    document.getElementById('drop-icon').textContent = '↑';
+    document.getElementById('drop-text').innerHTML = '<strong>Click to upload</strong> or drag &amp; drop';
+    document.getElementById('drop-sub').textContent = 'CSV or XLSX';
+    fileInput.value = '';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('download-btn').style.display = 'none';
+    checkReady();
+  }
+
+  document.getElementById('clear-btn').addEventListener('click', reset);
+
+  document.getElementById('process-btn').addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    const processBtn = document.getElementById('process-btn');
+    processBtn.disabled = true;
+    document.getElementById('btn-label').textContent = 'Converting…';
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('broker',       document.getElementById('broker').value.trim());
+    fd.append('platform',     document.getElementById('platform').value);
+    fd.append('account_name', document.getElementById('account-name').value.trim());
+    fd.append('date_start',   document.getElementById('date-start').value);
+    fd.append('date_end',     document.getElementById('date-end').value);
+    fd.append('file',         selectedFile);
+
+    try {
+      const resp = await fetch('/process', { method: 'POST', body: fd });
+      const d = await resp.json();
+
+      if (!resp.ok || d.error) {
+        showStatus(d.error || 'Processing failed.', 'err');
+      } else {
+        showStatus(`${d.row_count.toLocaleString()} transactions exported successfully.`, 'ok');
+
+        // Preview
+        document.getElementById('row-count').textContent =
+          `${d.row_count.toLocaleString()} transactions — showing first ${Math.min(8, d.row_count)}`;
+        const tbody = document.getElementById('preview-body');
+        tbody.innerHTML = '';
+        d.preview.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.Date}</td><td>${r.Description}</td><td>${r.Amount}</td>`;
+          tbody.appendChild(tr);
+        });
+        if (d.row_count > 8) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="3" style="color:#888780;font-style:italic;padding:8px 14px;">… and ${(d.row_count - 8).toLocaleString()} more rows</td>`;
+          tbody.appendChild(tr);
+        }
+
+        // Download
+        const dlBtn = document.getElementById('download-btn');
+        dlBtn.href = d.download_url;
+        dlBtn.download = d.filename;
+        dlBtn.textContent = `Download  ${d.filename}`;
+        dlBtn.style.display = 'inline-block';
+        document.getElementById('results').style.display = 'block';
+      }
+    } catch (err) {
+      showStatus('Network error: ' + err.message, 'err');
+    } finally {
+      processBtn.disabled = false;
+      document.getElementById('btn-label').textContent = 'Convert';
+      document.getElementById('spinner').style.display = 'none';
+      checkReady();
+    }
+  });
+</script>
+</body>
+</html>
