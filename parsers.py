@@ -150,8 +150,13 @@ def parse_platform(file, platform: str, date_start=None, date_end=None) -> pd.Da
     for _, row in df.iterrows():
         # Exclude by type (Slash)
         if "exclude_types" in config:
-            if row.get("Type", "").strip() in config["exclude_types"]:
-                continue
+            row_type = row.get("Type", "").strip()
+            if row_type in config["exclude_types"]:
+                # Exception: keep between_slash_accounts if description contains "transfer to"
+                if row_type == "between_slash_accounts" and "transfer to" in row.get(config["desc_cols"][0], "").strip().lower():
+                    pass  # keep it
+                else:
+                    continue
 
         # Exclude Wex N/A cardholders
         if config.get("exclude_wex_na"):
