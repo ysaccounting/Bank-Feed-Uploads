@@ -1,6 +1,7 @@
 import io
 import os
 import time
+import zipfile
 import uuid
 import shutil
 import tempfile
@@ -133,16 +134,19 @@ def process():
 
     files_out = []
     if rows_per_file:
-        # Combined file with _All suffix
-        all_name = filename.replace(".csv", "_All.csv")
-        result.to_csv(os.path.join(folder, all_name), index=False)
-        files_out.append({"url": f"/download/{token}/{all_name}", "name": all_name})
-        # Split files
+        # Build individual CSVs in memory and bundle into a zip
+        zip_name = filename.replace(".csv", ".zip")
+        zip_path = os.path.join(folder, zip_name)
         chunks = [result.iloc[i:i+rows_per_file] for i in range(0, len(result), rows_per_file)]
-        for idx, chunk in enumerate(chunks, 1):
-            chunk_name = filename.replace(".csv", f"_{idx}.csv")
-            chunk.to_csv(os.path.join(folder, chunk_name), index=False)
-            files_out.append({"url": f"/download/{token}/{chunk_name}", "name": chunk_name})
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            # Combined _All file
+            all_name = filename.replace(".csv", "_All.csv")
+            zf.writestr(all_name, result.to_csv(index=False))
+            # Split files
+            for idx, chunk in enumerate(chunks, 1):
+                chunk_name = filename.replace(".csv", f"_{idx}.csv")
+                zf.writestr(chunk_name, chunk.to_csv(index=False))
+        files_out.append({"url": f"/download/{token}/{zip_name}", "name": zip_name, "zip": True})
     else:
         result.to_csv(os.path.join(folder, filename), index=False)
         files_out.append({"url": f"/download/{token}/{filename}", "name": filename})
@@ -183,4 +187,5 @@ def download_named(token, fname):
     path   = os.path.join(folder, os.path.basename(fname))
     if not os.path.isfile(path):
         abort(404)
-    return send_file(path, mimetype="text/csv", as_attachment=True, download_name=fname)
+    mime = "application/zip" if fname.endswith(".zip") else "text/csv"
+    return send_file(path, mimetype=mime, as_attachment=True, download_name=fname)

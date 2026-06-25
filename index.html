@@ -387,43 +387,16 @@
           tbody.appendChild(tr);
         }
 
-        // Downloads
+        // Downloads — always a single button (single CSV or zip)
         const dlWrap = document.getElementById('downloads');
         dlWrap.innerHTML = '';
-        if (d.files.length === 1) {
-          // Single file — one download button
-          const a = document.createElement('a');
-          a.href = d.files[0].url;
-          a.download = d.files[0].name;
-          a.className = 'btn-download';
-          a.textContent = 'Download  ' + d.files[0].name;
-          dlWrap.appendChild(a);
-        } else {
-          // Multiple files — "Download All" zip would be ideal but we trigger each with a delay
-          // Show one button per file but label combined as _All
-          d.files.forEach((f, idx) => {
-            const a = document.createElement('a');
-            a.href = f.url;
-            a.download = f.name;
-            a.className = 'btn-download';
-            a.style.display = 'none';
-            a.id = 'dl-' + idx;
-            dlWrap.appendChild(a);
-          });
-          const bigBtn = document.createElement('button');
-          bigBtn.className = 'btn-download';
-          bigBtn.style.width = '100%';
-          bigBtn.style.cursor = 'pointer';
-          bigBtn.textContent = 'Download All (' + d.files.length + ' files)';
-          bigBtn.onclick = function() {
-            d.files.forEach((f, idx) => {
-              setTimeout(() => {
-                document.getElementById('dl-' + idx).click();
-              }, idx * 400);
-            });
-          };
-          dlWrap.insertBefore(bigBtn, dlWrap.firstChild);
-        }
+        const f = d.files[0];
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.download = f.name;
+        a.className = 'btn-download';
+        a.textContent = 'Download  ' + f.name;
+        dlWrap.appendChild(a);
         document.getElementById('results').style.display = 'block';
       }
     } catch (err) {
