@@ -127,15 +127,31 @@ def process():
     token  = uuid.uuid4().hex
     folder = os.path.join(STORE_DIR, token)
     os.makedirs(folder, exist_ok=True)
-    result.to_csv(os.path.join(folder, filename), index=False)
+
+    split         = request.form.get("split", "0").strip()
+    rows_per_file = int(request.form.get("rows_per_file", 50)) if split == "1" else None
+
+    files_out = []
+    if rows_per_file:
+        # Combined file
+        result.to_csv(os.path.join(folder, filename), index=False)
+        files_out.append({"url": f"/download/{token}/{filename}", "name": filename})
+        # Split files
+        chunks = [result.iloc[i:i+rows_per_file] for i in range(0, len(result), rows_per_file)]
+        for idx, chunk in enumerate(chunks, 1):
+            chunk_name = filename.replace(".csv", f"_{idx}.csv")
+            chunk.to_csv(os.path.join(folder, chunk_name), index=False)
+            files_out.append({"url": f"/download/{token}/{chunk_name}", "name": chunk_name})
+    else:
+        result.to_csv(os.path.join(folder, filename), index=False)
+        files_out.append({"url": f"/download/{token}/{filename}", "name": filename})
+
     _cleanup_old()
 
-
     return jsonify({
-        "row_count":    len(result),
-        "download_url": f"/download/{token}",
-        "filename":     filename,
-        "preview":      result.head(8).to_dict(orient="records"),
+        "row_count": len(result),
+        "files":     files_out,
+        "preview":   result.head(8).to_dict(orient="records"),
     })
 
 
@@ -158,3 +174,12 @@ def download(token):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+@app.route("/download/<token>/<fname>")
+def download_named(token, fname):
+    folder = os.path.join(STORE_DIR, os.path.basename(token))
+    path   = os.path.join(folder, os.path.basename(fname))
+    if not os.path.isfile(path):
+        abort(404)
+    return send_file(path, mimetype="text/csv", as_attachment=True, download_name=fname)
