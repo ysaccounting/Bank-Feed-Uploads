@@ -133,9 +133,10 @@ def process():
 
     files_out = []
     if rows_per_file:
-        # Combined file
-        result.to_csv(os.path.join(folder, filename), index=False)
-        files_out.append({"url": f"/download/{token}/{filename}", "name": filename})
+        # Combined file with _All suffix
+        all_name = filename.replace(".csv", "_All.csv")
+        result.to_csv(os.path.join(folder, all_name), index=False)
+        files_out.append({"url": f"/download/{token}/{all_name}", "name": all_name})
         # Split files
         chunks = [result.iloc[i:i+rows_per_file] for i in range(0, len(result), rows_per_file)]
         for idx, chunk in enumerate(chunks, 1):
