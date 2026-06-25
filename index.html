@@ -205,6 +205,11 @@
         </select>
         <input type="text" id="broker-other" placeholder="Enter broker name"
                style="display:none;margin-top:8px;" oninput="checkReady()" />
+        <div id="subaccount-wrap" style="display:none;margin-top:8px;">
+          <label style="margin-bottom:5px;">Last subaccount # used <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+          <input type="number" id="subaccount-last" min="1" max="14" placeholder="e.g. 8"
+                 style="width:100%;padding:9px 12px;border:1px solid #d1d1d6;border-radius:8px;font-family:inherit;font-size:14px;color:#1c1c1e;background:#fff;outline:none;" />
+        </div>
       </div>
       <div>
         <label for="platform">Platform</label>
@@ -348,6 +353,8 @@
     document.getElementById('broker').value = '';
     document.getElementById('broker-other').value = '';
     document.getElementById('broker-other').style.display = 'none';
+    document.getElementById('subaccount-last').value = '';
+    document.getElementById('subaccount-wrap').style.display = 'none';
     document.getElementById('platform').value = '';
     document.getElementById('account-name').value = '';
     document.getElementById('date-start').value = '';
@@ -386,7 +393,9 @@
     fd.append('account_name',  document.getElementById('account-name').value.trim());
     fd.append('date_start',    document.getElementById('date-start').value);
     fd.append('date_end',      document.getElementById('date-end').value);
-    fd.append('split',         isMulti ? '1' : '0');
+    const subLast = document.getElementById('subaccount-last').value.trim();
+    fd.append('split',          isMulti ? '1' : '0');
+    fd.append('subaccount_last', subLast);
     fd.append('rows_per_file', rowsPerFile);
     fd.append('file',          selectedFile);
 
@@ -441,6 +450,9 @@
     const other = document.getElementById('broker-other');
     other.style.display = sel === 'Other' ? 'block' : 'none';
     if (sel !== 'Other') other.value = '';
+    const subWrap = document.getElementById('subaccount-wrap');
+    subWrap.style.display = sel === 'Y&S' ? 'block' : 'none';
+    if (sel !== 'Y&S') document.getElementById('subaccount-last').value = '';
   }
 
   function toggleSplit() {

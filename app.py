@@ -132,24 +132,43 @@ def process():
     split         = request.form.get("split", "0").strip()
     rows_per_file = int(request.form.get("rows_per_file", 50)) if split == "1" else None
 
+    subaccount_last = request.form.get("subaccount_last", "").strip()
+    use_subaccount  = bool(subaccount_last and broker == "Y&S")
+
     files_out = []
     if rows_per_file:
-        # Build individual CSVs in memory and bundle into a zip
+        # Build split files and bundle into a zip
         zip_name = filename.replace(".csv", ".zip")
         zip_path = os.path.join(folder, zip_name)
         chunks = [result.iloc[i:i+rows_per_file] for i in range(0, len(result), rows_per_file)]
+
+        # Determine starting subaccount number
+        if use_subaccount:
+            next_num = (int(subaccount_last) % 14) + 1
+        
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            # Combined _All file
+            # Combined _All file — no number
             all_name = filename.replace(".csv", "_All.csv")
             zf.writestr(all_name, result.to_csv(index=False))
             # Split files
-            for idx, chunk in enumerate(chunks, 1):
-                chunk_name = filename.replace(".csv", f"_{idx}.csv")
+            for i, chunk in enumerate(chunks):
+                if use_subaccount:
+                    num = ((next_num - 1 + i) % 14) + 1
+                    chunk_name = filename.replace(".csv", f"_{num}.csv")
+                else:
+                    chunk_name = filename.replace(".csv", f"_{i + 1}.csv")
                 zf.writestr(chunk_name, chunk.to_csv(index=False))
+
         files_out.append({"url": f"/download/{token}/{zip_name}", "name": zip_name, "zip": True})
     else:
-        result.to_csv(os.path.join(folder, filename), index=False)
-        files_out.append({"url": f"/download/{token}/{filename}", "name": filename})
+        # Single file — include subaccount number if Y&S
+        if use_subaccount:
+            next_num = (int(subaccount_last) % 14) + 1
+            single_name = filename.replace(".csv", f"_{next_num}.csv")
+        else:
+            single_name = filename
+        result.to_csv(os.path.join(folder, single_name), index=False)
+        files_out.append({"url": f"/download/{token}/{single_name}", "name": single_name})
 
     _cleanup_old()
 
