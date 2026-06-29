@@ -1,6 +1,7 @@
 import io
 import os
 import time
+import json
 import zipfile
 import uuid
 import shutil
@@ -16,6 +17,50 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 STORE_DIR = os.path.join(tempfile.gettempdir(), "bfu_store")
 os.makedirs(STORE_DIR, exist_ok=True)
+
+SHEET_ID = "1qKu7O-rz4fYaTUXGludm6stDenCHDlxdA7Ddu7F6hQk"
+
+PLATFORM_TAB_MAP = {
+    "Divvy CR":    "Divvy CR",
+    "Divvy PF":    "Divvy PF",
+    "Slash":       "Slash",
+    "Wex CR (280)": "Wex CR (280)",
+    "Wex CR (285)": "Wex CR (285)",
+    "Wex PF":      "Wex PF",
+    "Wex PF (285)": "Wex PF (285)",
+}
+
+
+def _push_to_sheets(df, platform):
+    tab_name = PLATFORM_TAB_MAP.get(platform)
+    if not tab_name:
+        return
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS", "")
+    if not creds_json:
+        return
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=scopes)
+        gc = gspread.authorize(creds)
+        sh = gc.open_by_key(SHEET_ID)
+        try:
+            ws = sh.worksheet(tab_name)
+        except gspread.exceptions.WorksheetNotFound:
+            ws = sh.add_worksheet(title=tab_name, rows=1000, cols=3)
+            ws.append_row(["Date", "Description", "Amount"])
+
+        # Sort oldest to newest before appending
+        sorted_df = df.copy()
+        sorted_df["_sort"] = pd.to_datetime(sorted_df["Date"], errors="coerce")
+        sorted_df = sorted_df.sort_values("_sort").drop(columns=["_sort"])
+
+        rows = sorted_df[["Date", "Description", "Amount"]].values.tolist()
+        ws.append_rows(rows, value_input_option="USER_ENTERED")
+    except Exception as e:
+        print(f"Sheets push error: {e}")
+
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
@@ -169,6 +214,10 @@ def process():
             single_name = filename
         result.to_csv(os.path.join(folder, single_name), index=False)
         files_out.append({"url": f"/download/{token}/{single_name}", "name": single_name})
+
+    # Push to Google Sheets if Y&S broker and platform has a tab
+    if broker == "Y&S" and platform in PLATFORM_TAB_MAP:
+        _push_to_sheets(result, platform)
 
     _cleanup_old()
 
