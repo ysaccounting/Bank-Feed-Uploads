@@ -215,10 +215,6 @@ def process():
         result.to_csv(os.path.join(folder, single_name), index=False)
         files_out.append({"url": f"/download/{token}/{single_name}", "name": single_name})
 
-    # Push to Google Sheets if Y&S broker and platform has a tab
-    if broker == "Y&S" and platform in PLATFORM_TAB_MAP:
-        _push_to_sheets(result, platform)
-
     _cleanup_old()
 
     return jsonify({
@@ -242,6 +238,35 @@ def download(token):
         as_attachment=True,
         download_name=csvs[0],
     )
+
+
+@app.route("/push_sheets", methods=["POST"])
+def push_sheets():
+    broker   = request.form.get("broker", "").strip()
+    platform = request.form.get("platform", "").strip()
+    token    = request.form.get("token", "").strip()
+
+    if broker != "Y&S" or platform not in PLATFORM_TAB_MAP:
+        return jsonify({"error": "Google Sheets push not available for this broker/platform."}), 400
+
+    # Find the _All CSV in the token folder
+    folder = os.path.join(STORE_DIR, os.path.basename(token))
+    if not os.path.isdir(folder):
+        return jsonify({"error": "Session expired. Please convert again."}), 400
+
+    csvs = [f for f in os.listdir(folder) if f.endswith("_All.csv") or (f.endswith(".csv") and not f.endswith(".zip"))]
+    if not csvs:
+        return jsonify({"error": "No file found to push."}), 400
+
+    # Pick _All if available, otherwise the only csv
+    target = next((f for f in csvs if f.endswith("_All.csv")), csvs[0])
+    df = pd.read_csv(os.path.join(folder, target))
+
+    try:
+        _push_to_sheets(df, platform)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
