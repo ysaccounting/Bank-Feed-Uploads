@@ -299,15 +299,8 @@
 <script>
   let selectedFile = null;
 
-  // Load platforms from server
-  fetch('/platforms').then(r => r.json()).then(platforms => {
-    const sel = document.getElementById('platform');
-    platforms.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = opt.textContent = p;
-      sel.appendChild(opt);
-    });
-  });
+  // Load default platforms on page load
+  updatePlatforms('');
 
   function checkReady() {
     const brokerSel = document.getElementById('broker').value;
@@ -445,6 +438,30 @@
       checkReady();
     }
   });
+  const DEFAULT_PLATFORMS = [
+    'Divvy CR','Divvy PF','EvoPay','Global Rewards','Slash','Taekus','Wex CR','Wex PF'
+  ];
+  const YS_PLATFORMS = [
+    'Divvy CR','Divvy PF','EvoPay','Global Rewards','Slash','Taekus',
+    'Wex CR (280)','Wex CR (285)','Wex PF','Wex PF (285)'
+  ];
+
+  function updatePlatforms(broker) {
+    const sel = document.getElementById('platform');
+    const current = sel.value;
+    const platforms = broker === 'Y&S' ? YS_PLATFORMS : DEFAULT_PLATFORMS;
+    sel.innerHTML = '<option value="">Select...</option>';
+    platforms.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = p;
+      if (p === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    // If current selection no longer valid, reset
+    if (!platforms.includes(current)) sel.value = '';
+    checkReady();
+  }
+
   function brokerChanged() {
     const sel = document.getElementById('broker').value;
     const other = document.getElementById('broker-other');
@@ -453,6 +470,7 @@
     const subWrap = document.getElementById('subaccount-wrap');
     subWrap.style.display = sel === 'Y&S' ? 'block' : 'none';
     if (sel !== 'Y&S') document.getElementById('subaccount-last').value = '';
+    updatePlatforms(sel);
   }
 
   function toggleSplit() {

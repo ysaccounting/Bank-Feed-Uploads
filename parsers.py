@@ -124,6 +124,30 @@ PLATFORM_CONFIG = {
         "wex_last4": True,
         "exclude_wex_na": True,
     },
+    "Wex CR (280)": {
+        "date_col": "Transaction.Posting Dt",
+        "desc_cols": ["Transaction.Merchant Name", "Purchase Card Log.Name", "Card Number.Card No"],
+        "amount_col": "Transaction.Transaction Amount",
+        "negate_amount": True,
+        "wex_last4": True,
+        "exclude_wex_na": True,
+    },
+    "Wex CR (285)": {
+        "date_col": "Transaction.Posting Dt",
+        "desc_cols": ["Transaction.Merchant Name", "Purchase Card Log.Name", "Card Number.Card No"],
+        "amount_col": "Transaction.Transaction Amount",
+        "negate_amount": True,
+        "wex_last4": True,
+        "exclude_wex_na": True,
+    },
+    "Wex PF (285)": {
+        "date_col": "Transaction.Posting Dt",
+        "desc_cols": ["Transaction.Merchant Name", "Purchase Card Log.Name", "Card Number.Card No"],
+        "amount_col": "Transaction.Transaction Amount",
+        "negate_amount": True,
+        "wex_last4": True,
+        "exclude_wex_na": True,
+    },
 }
 
 WEX_ALT_COLS = {
