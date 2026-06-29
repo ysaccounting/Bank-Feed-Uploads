@@ -300,7 +300,7 @@
   let selectedFile = null;
 
   // Load default platforms on page load
-  updatePlatforms('');
+  document.addEventListener('DOMContentLoaded', () => updatePlatforms(''));
 
   function checkReady() {
     const brokerSel = document.getElementById('broker').value;
